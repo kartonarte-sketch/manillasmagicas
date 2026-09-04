@@ -107890,16 +107890,17 @@ s.a5(new A.azv(s,r,A.jw("HH:mm",null).dd(new A.bq(Date.now(),!1))))
 s.Tr()
 A.ce(B.e7,new A.azw(s,r))},
 ac2(a){var s,r=$.fV().a,q=$.pS().a
+if(B.e.q(a,"valentina")||B.e.q(a,"edad")||B.e.q(a,"cuantos a\xf1os")||B.e.q(a,"creadora"))return"\xa1Valentina es la mente creativa y dise\xf1adora principal detr\xe1s de Manillas M\xe1gicas! \ud83d\udc51\u2728 Ella tiene 10 a\xf1os de pura creatividad y amor por las manualidades. \xa1Cada manilla y anillo los hace con sus propias manos para ti!"
 if(B.e.q(a,"precio")||B.e.q(a,"cuesta")||B.e.q(a,"vale")){s=J.a98(r,3)
 return"\xa1Claro hermosa! Tenemos precios desde $ 2.500 COP.\n\nAqu\xed tienes algunos favoritos de Valentina:\n"+new A.af(s,new A.azs(),A.p(s).j("af<aO.E,u>")).cU(0,"\n")+"\n\n\xbfQuieres que te busque alguno en especial? \ud83d\udc8e"}if(B.e.q(a,"promo")||B.e.q(a,"descuento")||B.e.q(a,"combo")||B.e.q(a,"oferta")){s=J.aK(q)
 if(s.gcK(q))return'\xa1S\xed, tenemos super promos m\xe1gicas hoy! \ud83c\udf89\n\n"'+s.gX(q).a+'"\n'+s.gX(q).b+"\n\n\xa1Aprovecha antes de que se agoten! \u2728"
 return"\xa1Lleva 2 o m\xe1s manillas y recibes regalito m\xe1gico en tu pedido!"}if(B.e.q(a,"comprar")||B.e.q(a,"pedido")||B.e.q(a,"pagar")||B.e.q(a,"como pido"))return'\xa1Es s\xfaper f\xe1cil! \ud83d\udecd\ufe0f Ve a la pesta\xf1a de "Tienda", toca el bot\xf3n rosa con el (+) en tu manilla o anillo favorito, y cuando est\xe9s lista, toca la bolsita m\xe1gica arriba para finalizar tu pedido.'
 if(B.e.q(a,"manilla")||B.e.q(a,"anillo")||B.e.q(a,"pulsera"))return'Valentina dise\xf1a cada accesorio a mano con colores vivos, unicornios, estrellas y brillos. Puedes ver todos los estilos en la pesta\xf1a "Tienda" filtrando por categor\xeda. \ud83e\udd84\u2728'
 if(B.e.q(a,"hola")||B.e.q(a,"buenas")||B.e.q(a,"luz"))return"\xa1Hola hermosa! Qu\xe9 alegr\xeda que me escribas. Valentina y yo estamos felices de que est\xe9s en Manillas M\xe1gicas. \xbfQu\xe9 te gustar\xeda saber hoy? \ud83c\udf1f"
-return'\xa1Qu\xe9 linda pregunta! Como amiga de Valentina, te cuento que todas nuestras creaciones son 100% artesanales y m\xe1gicas. Puedes preguntarme por "precios", "promociones" o "c\xf3mo comprar" y te guiar\xe9 con gusto. \ud83d\udc95'},
+return'\xa1Qu\xe9 linda pregunta! Como amiga de Valentina, te cuento que todas nuestras creaciones son 100% artesanales y m\xe1gicas. Puedes preguntarme por "la edad de Valentina", "precios", "promociones" o "c\xf3mo comprar" y te guiar\xe9 con gusto. \ud83d\udc95'},
 Tr(){A.ce(B.bc,new A.azt(this))},
 J(a){var s=this,r=null,q=t.p
-return A.bx(A.a([A.bf(r,B.ajL,B.k,B.lU,r,r,r,r,r,B.Sn,r,r,r),A.c0(A.jI(s.f,new A.azx(s),s.d.length,B.mh,r,B.aq,!1),1),A.bf(r,A.bF(A.a([A.c0(A.f8(!0,B.aO,!1,r,!0,B.B,r,A.fr(),s.e,r,r,r,r,r,2,A.Bn(r,new A.hF(4,A.cm(20),B.y),r,B.ro,r,r,r,r,!0,r,r,r,r,r,r,B.eS,!0,r,r,r,r,r,r,r,r,r,r,r,B.apF,"Preg\xfantale a Luz sobre precios, promos...",r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r),B.T,!0,r,!0,r,!1,r,r,r,r,r,r,r,1,r,r,!1,"\u2022",r,r,r,new A.azy(s),r,!1,r,!1,r,!0,r,B.az,r,r,B.aL,B.aC,r,r,r,r,r,r,r,B.af,r,B.bi,r,r,r,r),1),B.bP,A.nP(B.H,r,A.dQ(r,r,B.UZ,r,s.gakT(),r,r,r),r)],q),B.t,B.q,B.v),B.k,B.j,r,r,r,r,r,B.iO,r,r,r)],q),B.t,B.q,B.v)}}
+return A.bx(A.a([A.bf(r,B.ajL,B.k,B.lU,r,r,r,r,r,B.Sn,r,r,r),A.c0(A.jI(s.f,new A.azx(s),s.d.length,B.mh,r,B.aq,!1),1),A.bf(r,A.bF(A.a([A.c0(A.f8(!0,B.aO,!1,r,!0,B.B,r,A.fr(),s.e,r,r,r,r,r,2,A.Bn(r,new A.hF(4,A.cm(20),B.y),r,B.ro,r,r,r,r,!0,r,r,r,r,r,r,B.eS,!0,r,r,r,r,r,r,r,r,r,r,r,B.apF,"Preg\xfantale a Luz sobre Valentina, precios...",r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r),B.T,!0,r,!0,r,!1,r,r,r,r,r,r,r,1,r,r,!1,"\u2022",r,r,r,new A.azy(s),r,!1,r,!1,r,!0,r,B.az,r,r,B.aL,B.aC,r,r,r,r,r,r,r,B.af,r,B.bi,r,r,r,r),1),B.bP,A.nP(B.H,r,A.dQ(r,r,B.UZ,r,s.gakT(),r,r,r),r)],q),B.t,B.q,B.v),B.k,B.j,r,r,r,r,r,B.iO,r,r,r)],q),B.t,B.q,B.v)}}
 A.azv.prototype={
 $0(){var s=this.a
 s.d.push(new A.uf("user",this.b,this.c))
