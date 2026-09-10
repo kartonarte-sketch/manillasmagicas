@@ -13,137 +13,84 @@ class ArcadeTab extends StatefulWidget {
 }
 
 class _ArcadeTabState extends State<ArcadeTab> {
-  void _openTournamentManager(BuildContext context) {
-    final titleController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setStateDialog) => AlertDialog(
-          title: const Text('Administrar Torneos', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: SizedBox(
-            width: 400,
-            height: 350,
-            child: ValueListenableBuilder<List<Tournament>>(
-              valueListenable: globalTournamentsNotifier,
-              builder: (context, tournaments, child) {
-                return Column(
-                  children: [
-                    TextField(
-                      controller: titleController,
-                      decoration: const InputDecoration(labelText: 'Nuevo Torneo (Ej: Torneo Relámpago)', border: OutlineInputBorder()),
-                    ),
-                    const SizedBox(height: 8),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
-                      onPressed: () {
-                        final title = formatTitleCase(titleController.text);
-                        if (title.isNotEmpty) {
-                          List<Tournament> updated = List.from(globalTournamentsNotifier.value);
-                          updated.add(Tournament(
-                            id: DateTime.now().millisecondsSinceEpoch.toString(),
-                            title: title,
-                            scores: [],
-                          ));
-                          globalTournamentsNotifier.value = updated;
-                          titleController.clear();
-                          setStateDialog(() {});
-                          setState(() {});
-                        }
-                      },
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: const Text('Crear Torneo', style: TextStyle(color: Colors.white)),
-                    ),
-                    const Divider(),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: tournaments.length,
-                        itemBuilder: (context, index) {
-                          final t = tournaments[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              title: Text(t.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              subtitle: Text('${t.scores.length} participantes registrados'),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () {
-                                  List<Tournament> updated = List.from(globalTournamentsNotifier.value);
-                                  updated.removeAt(index);
-                                  globalTournamentsNotifier.value = updated;
-                                  setStateDialog(() {});
-                                  setState(() {});
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4ECDC4)),
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cerrar', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _startGame(BuildContext context, VoidCallback gameLauncher) {
+  void _startGame(BuildContext context, TournamentItem tournament, VoidCallback gameLauncher) {
     final user = globalActiveUserNotifier.value;
     if (user == null) {
       showLoginOrRegisterDialog(context, () {
-        gameLauncher();
+        _checkParticipationAndPlay(context, tournament, gameLauncher);
       });
+    } else {
+      _checkParticipationAndPlay(context, tournament, gameLauncher);
+    }
+  }
+
+  void _checkParticipationAndPlay(BuildContext context, TournamentItem tournament, VoidCallback gameLauncher) {
+    final user = globalActiveUserNotifier.value;
+    if (user == null) return;
+
+    // Contar cuántas veces ha participado el usuario actual en este torneo
+    int userAttempts = tournament.scores.where((s) => s.playerName.toLowerCase() == user.name.toLowerCase()).length;
+
+    if (userAttempts >= 2) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('¡Oportunidades Agotadas! 🛑', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD85A7F))),
+          content: Text('Hola ${user.name}, ya has participado 2 veces en este torneo y has cumplido tus oportunidades mágicas. ¡Gracias por jugar!', style: const TextStyle(fontSize: 15)),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Entendido', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
     } else {
       gameLauncher();
     }
   }
 
-  void _showTournamentScoresDialog(BuildContext context, int tournamentIndex, String gameTitle) {
+  void _showTournamentScoresDialog(BuildContext context, TournamentItem tournament) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('🏆 Tabla: $gameTitle', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD85A7F))),
+        title: Text('🏆 Resultados: ${tournament.gameName}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD85A7F))),
         content: SizedBox(
           width: 400,
           height: 350,
-          child: ValueListenableBuilder<List<Tournament>>(
-            valueListenable: globalTournamentsNotifier,
-            builder: (context, tournaments, child) {
-              if (tournaments.length <= tournamentIndex) {
-                return const Center(child: Text('Torneo no disponible.'));
-              }
-              final t = tournaments[tournamentIndex];
-              t.scores.sort((a, b) => a.timeInSeconds.compareTo(b.timeInSeconds));
-
-              if (t.scores.isEmpty) {
-                return const Center(child: Text('Aún no hay participantes registrados en este torneo.'));
-              }
-
-              return ListView.builder(
-                shrinkWrap: true,
-                itemCount: t.scores.length,
-                itemBuilder: (context, sIndex) {
-                  final score = t.scores[sIndex];
-                  String medal = sIndex == 0 ? '🥇' : (sIndex == 1 ? '🥈' : (sIndex == 2 ? '🥉' : '✨'));
-                  return ListTile(
-                    leading: Text(medal, style: const TextStyle(fontSize: 22)),
-                    title: Text('${sIndex + 1}. ${score.playerName}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('Fecha: ${score.date}'),
-                    trailing: Text('${score.timeInSeconds.toStringAsFixed(3)} seg', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFD85A7F), fontSize: 15)),
-                  );
-                },
-              );
-            },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('🎁 Premio: ${tournament.prize}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF2D1B33))),
+              const SizedBox(height: 4),
+              Text('📜 Reglas: ${tournament.rules}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              const Divider(),
+              Expanded(
+                child: Builder(
+                  builder: (context) {
+                    tournament.scores.sort((a, b) => a.timeInSeconds.compareTo(b.timeInSeconds));
+                    if (tournament.scores.isEmpty) {
+                      return const Center(child: Text('Aún no hay participantes registrados en este torneo.'));
+                    }
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: tournament.scores.length,
+                      itemBuilder: (context, sIndex) {
+                        final score = tournament.scores[sIndex];
+                        String medal = sIndex == 0 ? '🥇' : (sIndex == 1 ? '🥈' : (sIndex == 2 ? '🥉' : '✨'));
+                        return ListTile(
+                          leading: Text(medal, style: const TextStyle(fontSize: 22)),
+                          title: Text('${sIndex + 1}. ${score.playerName}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('Fecha: ${score.date}'),
+                          trailing: Text('${score.timeInSeconds.toStringAsFixed(3)} seg', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFD85A7F), fontSize: 15)),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
@@ -165,114 +112,123 @@ class _ArcadeTabState extends State<ArcadeTab> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('🎮 Sección de Juegos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D1B33))),
-            IconButton(
-              icon: const Icon(Icons.admin_panel_settings, color: Color(0xFFD85A7F), size: 28),
-              tooltip: 'Panel de Torneos',
-              onPressed: () => _openTournamentManager(context),
-            ),
+            const Text('🎮 Sección de Torneos y Juegos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D1B33))),
           ],
         ),
         const SizedBox(height: 4),
-        const Text('Selecciona un juego para participar y registrar tu récord.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+        const Text('Participa en los torneos activos programados por la administración y gana increíbles premios. (Máximo 2 intentos por torneo)', style: TextStyle(color: Colors.grey, fontSize: 13)),
         const SizedBox(height: 16),
 
-        Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFFD85A7F), Color(0xFFFFD93D)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.psychology, color: Colors.white, size: 32),
-                    SizedBox(width: 10),
-                    Text('Concentración Mágica', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
-                  ],
+        ValueListenableBuilder<List<TournamentItem>>(
+          valueListenable: globalTournamentsNotifier,
+          builder: (context, tournaments, child) {
+            if (tournaments.isEmpty) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40.0),
+                  child: Text(
+                    'No hay torneos programados por Valentina en este momento. ¡Vuelve pronto!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
                 ),
-                const SizedBox(height: 6),
-                const Text('Encuentra las 10 parejas de manillas y anillos en el menor tiempo posible.', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFFD85A7F)),
-                        onPressed: () => _startGame(context, () => showDialog(context: context, barrierDismissible: false, builder: (context) => const MemoryGameDialog())),
-                        icon: const Icon(Icons.play_arrow, size: 18),
-                        label: const Text('Jugar', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white)),
-                        onPressed: () => _showTournamentScoresDialog(context, 0, 'Concentración Mágica'),
-                        icon: const Icon(Icons.leaderboard, size: 18),
-                        label: const Text('Posiciones', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+              );
+            }
 
-        const SizedBox(height: 16),
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: tournaments.length,
+              itemBuilder: (context, index) {
+                final t = tournaments[index];
+                final now = DateTime.now();
+                bool isOngoing = now.isAfter(t.startDate) && now.isBefore(t.endDate);
+                bool isUpcoming = now.isBefore(t.startDate);
 
-        Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF4ECDC4), Color(0xFF63C7B2)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.flash_on, color: Colors.white, size: 32),
-                    SizedBox(width: 10),
-                    Text('Reto de Velocidad y Diseño', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Text('Toca los productos pedidos en orden para registrar el récord más rápido.', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF2E8B82)),
-                        onPressed: () => _startGame(context, () => showDialog(context: context, barrierDismissible: false, builder: (context) => const SpeedDesignGameDialog())),
-                        icon: const Icon(Icons.play_arrow, size: 18),
-                        label: const Text('Jugar', style: TextStyle(fontWeight: FontWeight.bold)),
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isOngoing 
+                            ? [const Color(0xFFD85A7F), const Color(0xFFFFD93D)] 
+                            : [Colors.grey.shade400, Colors.grey.shade600],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white)),
-                        onPressed: () => _showTournamentScoresDialog(context, 1, 'Reto del Diseñador'),
-                        icon: const Icon(Icons.leaderboard, size: 18),
-                        label: const Text('Posiciones', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.emoji_events, color: Colors.white, size: 28),
+                                const SizedBox(width: 10),
+                                Text(t.gameName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+                              ],
+                            ),
+                            Chip(
+                              backgroundColor: Colors.white,
+                              label: Text(
+                                isOngoing ? '¡En Curso! 🔥' : (isUpcoming ? 'Próximamente ⏳' : 'Finalizado 🏁'),
+                                style: TextStyle(
+                                  color: isOngoing ? const Color(0xFFD85A7F) : (isUpcoming ? Colors.orange.shade800 : Colors.grey.shade700),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text('🎁 Premio: ${t.prize}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 4),
+                        Text('📜 Reglas: ${t.rules}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                        const SizedBox(height: 6),
+                        Text('🕒 Del ${DateFormat('dd/MM/yyyy HH:mm').format(t.startDate)} al ${DateFormat('dd/MM/yyyy HH:mm').format(t.endDate)}', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            if (isOngoing)
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFFD85A7F)),
+                                  onPressed: () {
+                                    if (t.gameName.contains('Concentración')) {
+                                      _startGame(context, t, () => showDialog(context: context, barrierDismissible: false, builder: (context) => MemoryGameDialog(tournamentIndex: index)));
+                                    } else {
+                                      _startGame(context, t, () => showDialog(context: context, barrierDismissible: false, builder: (context) => SpeedDesignGameDialog(tournamentIndex: index)));
+                                    }
+                                  },
+                                  icon: const Icon(Icons.play_arrow, size: 18),
+                                  label: const Text('¡Jugar Ahora!', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            if (isOngoing) const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white)),
+                                onPressed: () => _showTournamentScoresDialog(context, t),
+                                icon: const Icon(Icons.leaderboard, size: 18),
+                                label: Text(isOngoing ? 'Tabla de Posiciones' : 'Ver Resultados Finales', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+                  ),
+                );
+              },
+            );
+          },
         ),
       ],
     );
@@ -280,7 +236,8 @@ class _ArcadeTabState extends State<ArcadeTab> {
 }
 
 class MemoryGameDialog extends StatefulWidget {
-  const MemoryGameDialog({super.key});
+  final int tournamentIndex;
+  const MemoryGameDialog({super.key, required this.tournamentIndex});
 
   @override
   State<MemoryGameDialog> createState() => _MemoryGameDialogState();
@@ -381,9 +338,9 @@ class _MemoryGameDialogState extends State<MemoryGameDialog> {
     final user = globalActiveUserNotifier.value;
     if (user == null) return;
 
-    List<Tournament> tournaments = globalTournamentsNotifier.value;
-    if (tournaments.isNotEmpty) {
-      tournaments[0].scores.add(ScoreEntry(
+    List<TournamentItem> tournaments = globalTournamentsNotifier.value;
+    if (tournaments.length > widget.tournamentIndex) {
+      tournaments[widget.tournamentIndex].scores.add(ScoreEntry(
         playerName: user.name,
         timeInSeconds: finalSeconds,
         date: DateFormat('dd/MM/yyyy').format(DateTime.now()),
@@ -397,7 +354,7 @@ class _MemoryGameDialogState extends State<MemoryGameDialog> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFFFFF5F7),
         title: const Text('¡Juego Completado!', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD85A7F))),
-        content: Text('Ha completado las 10 parejas, ${user.name}.\n\nTiempo total: ${_elapsedTimeString} segundos.\n\nSu marca ha sido registrada en la tabla de posiciones.', style: const TextStyle(fontSize: 15)),
+        content: Text('Ha completado las 10 parejas, ${user.name}.\n\nTiempo total: ${_elapsedTimeString} segundos.\n\nSu marca ha sido registrada en la tabla del torneo.', style: const TextStyle(fontSize: 15)),
         actions: [
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
@@ -512,7 +469,8 @@ class _MemoryCard {
 }
 
 class SpeedDesignGameDialog extends StatefulWidget {
-  const SpeedDesignGameDialog({super.key});
+  final int tournamentIndex;
+  const SpeedDesignGameDialog({super.key, required this.tournamentIndex});
 
   @override
   State<SpeedDesignGameDialog> createState() => _SpeedDesignGameDialogState();
@@ -593,9 +551,9 @@ class _SpeedDesignGameDialogState extends State<SpeedDesignGameDialog> {
     final user = globalActiveUserNotifier.value;
     if (user == null) return;
 
-    List<Tournament> tournaments = globalTournamentsNotifier.value;
-    if (tournaments.length > 1) {
-      tournaments[1].scores.add(ScoreEntry(
+    List<TournamentItem> tournaments = globalTournamentsNotifier.value;
+    if (tournaments.length > widget.tournamentIndex) {
+      tournaments[widget.tournamentIndex].scores.add(ScoreEntry(
         playerName: user.name,
         timeInSeconds: finalSeconds,
         date: DateFormat('dd/MM/yyyy').format(DateTime.now()),
@@ -609,7 +567,7 @@ class _SpeedDesignGameDialogState extends State<SpeedDesignGameDialog> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFFFFF5F7),
         title: const Text('¡Reto Superado!', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4ECDC4))),
-        content: Text('Completó el reto de velocidad, ${user.name}.\n\nTiempo total: ${_elapsedTimeString} segundos.\n\nSu marca ha sido registrada en la tabla.', style: const TextStyle(fontSize: 15)),
+        content: Text('Completó el reto de velocidad, ${user.name}.\n\nTiempo total: ${_elapsedTimeString} segundos.\n\nSu marca ha sido registrada en la tabla del torneo.', style: const TextStyle(fontSize: 15)),
         actions: [
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4ECDC4)),

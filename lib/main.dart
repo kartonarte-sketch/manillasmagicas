@@ -1,17 +1,18 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; //
-import 'dart:async';
-import 'dart:math';
+import 'firebase_options.dart';
 import 'package:intl/intl.dart';
+import 'dart:math';
 
 import 'models.dart';
 import 'services.dart';
 import 'admin_panel.dart';
 import 'arcade_games.dart';
 import 'community.dart';
+import 'custom_bracelets.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,12 +71,10 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _mainController;
-  late AnimationController _wandController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
-  late Animation<double> _rotationAnimation;
 
   @override
   void initState() {
@@ -83,12 +82,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     initFirestoreSync();
 
     _mainController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500));
-    _wandController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);
-    _scaleAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(CurvedAnimation(parent: _mainController, curve: Curves.easeOutBack));
+    _scaleAnimation = Tween<double>(begin: 0.7, end: 1.0).animate(CurvedAnimation(parent: _mainController, curve: Curves.easeOutBack));
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _mainController, curve: Curves.easeIn));
-    _rotationAnimation = Tween<double>(begin: -0.2, end: 0.2).animate(CurvedAnimation(parent: _wandController, curve: Curves.easeInOut));
+    
     _mainController.forward();
     Future.delayed(const Duration(milliseconds: 300), () => playMagicChime());
+    
     Timer(const Duration(seconds: 3), () {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainShopScreen()));
     });
@@ -97,7 +96,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void dispose() {
     _mainController.dispose();
-    _wandController.dispose();
     super.dispose();
   }
 
@@ -119,33 +117,13 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             opacity: _fadeAnimation,
             child: ScaleTransition(
               scale: _scaleAnimation,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AnimatedBuilder(
-                    animation: _rotationAnimation,
-                    builder: (context, child) => Transform.rotate(angle: _rotationAnimation.value, child: child),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 140,
-                          height: 140,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.15),
-                            boxShadow: [BoxShadow(color: const Color(0xFFFFD93D).withOpacity(0.7), blurRadius: 45, spreadRadius: 15)],
-                          ),
-                        ),
-                        const Icon(Icons.auto_fix_high, size: 95, color: Colors.white),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 25),
-                  const Text('Manillas Mágicas', style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.5)),
-                  const SizedBox(height: 10),
-                  const Text('by Valentina', style: TextStyle(color: Color(0xFFFFD93D), fontSize: 22, fontWeight: FontWeight.bold)),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Image.asset(
+                  'assets/images/LogoManillasMagicas.png',
+                  width: 280,
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
           ),
@@ -176,8 +154,9 @@ void showLoginOrRegisterDialog(BuildContext context, VoidCallback onSuccess) {
           const SizedBox(height: 10),
           TextField(
             controller: wppController,
+            maxLength: 10,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: 'WhatsApp', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'WhatsApp', border: OutlineInputBorder(), counterText: ''),
           ),
         ],
       ),
@@ -192,6 +171,13 @@ void showLoginOrRegisterDialog(BuildContext context, VoidCallback onSuccess) {
             if (name.isEmpty || wpp.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Por favor completa ambos campos')),
+              );
+              return;
+            }
+
+            if (wpp.length != 10 || int.tryParse(wpp) == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('⚠️ Número de WhatsApp errado o no corresponde a un contacto válido.')),
               );
               return;
             }
@@ -219,6 +205,124 @@ void showLoginOrRegisterDialog(BuildContext context, VoidCallback onSuccess) {
             onSuccess();
           },
           child: const Text('Continuar 🚀', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
+
+void showOrderTrackingDialog(BuildContext context) {
+  final TextEditingController wppController = TextEditingController();
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('📦 Mis Pedidos Mágicos', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D1B33))),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Ingresa tu número de WhatsApp para consultar el historial de tus compras:'),
+          const SizedBox(height: 12),
+          TextField(
+            controller: wppController,
+            maxLength: 10,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(labelText: 'WhatsApp (10 dígitos)', border: OutlineInputBorder(), counterText: ''),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
+          onPressed: () {
+            final wpp = wppController.text.trim();
+
+            if (wpp.length != 10 || int.tryParse(wpp) == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('⚠️ Número de WhatsApp errado o no corresponde a un contacto válido.')),
+              );
+              return;
+            }
+
+            Navigator.pop(context);
+            _showOrderResultsModal(context, wpp);
+          },
+          child: const Text('Consultar 🔍', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showOrderResultsModal(BuildContext context, String whatsapp) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('Historial para: $whatsapp', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2D1B33))),
+      content: SizedBox(
+        width: 450,
+        height: 400,
+        child: ValueListenableBuilder<List<OrderItem>>(
+          valueListenable: globalOrdersNotifier,
+          builder: (context, orders, child) {
+            final clientOrders = orders.where((o) => o.clientWhatsapp == whatsapp).toList();
+
+            if (clientOrders.isEmpty) {
+              return const Center(
+                child: Text(
+                  'No encontramos pedidos registrados con este número de WhatsApp. ¡Anímate a pedir tus manillas favoritas!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+              );
+            }
+
+            return ListView.builder(
+              itemCount: clientOrders.length,
+              itemBuilder: (context, index) {
+                final order = clientOrders[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Código: ${order.orderCode}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD85A7F))),
+                            Chip(
+                              backgroundColor: order.status == 'Pendiente' ? Colors.amber[100] : Colors.green[100],
+                              label: Text(order.status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: order.status == 'Pendiente' ? Colors.amber[800] : Colors.green[800])),
+                            ),
+                          ],
+                        ),
+                        Text('Fecha: ${order.date}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        const Divider(),
+                        ...order.items.map((item) => Text('• ${item.product.name} (x${item.quantity})', style: const TextStyle(fontSize: 12))),
+                        const SizedBox(height: 6),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text('Total: ${formatCOP(order.total)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Color(0xFF2D1B33))),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+      actions: [
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cerrar', style: TextStyle(color: Colors.white)),
         ),
       ],
     ),
@@ -321,109 +425,98 @@ class _MainShopScreenState extends State<MainShopScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFD85A7F),
         elevation: 2,
+        titleSpacing: 4,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: Row(
-          children: [
-            const Icon(Icons.auto_fix_high, color: Color(0xFFFFD93D), size: 22),
-            const SizedBox(width: 8),
-            Expanded(
-              child: ValueListenableBuilder<ClientUser?>(
-                valueListenable: globalActiveUserNotifier,
-                builder: (context, user, child) {
-                  return Text(
-                    user != null ? 'Hola, ${user.name}' : 'Manillas Mágicas',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontSize: 18,
-                      letterSpacing: 0.5,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  );
-                },
-              ),
-            ),
-          ],
+        title: const Text(
+          'Manillas Mágicas',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            fontSize: 15,
+            letterSpacing: 0.2,
+          ),
+          overflow: TextOverflow.ellipsis,
         ),
         actions: [
-          ValueListenableBuilder<ClientUser?>(
-            valueListenable: globalActiveUserNotifier,
-            builder: (context, user, child) {
-              if (user == null) return const SizedBox.shrink();
-              return IconButton(
-                icon: const Icon(Icons.logout, color: Colors.white70),
-                tooltip: 'Cerrar sesión',
-                onPressed: () => globalActiveUserNotifier.value = null,
-              );
-            },
+          // Botón en pastilla translúcida con el icono de la caja y texto blanco contrastado
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              backgroundColor: Colors.white.withOpacity(0.25),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            icon: const Icon(Icons.local_shipping, color: Colors.white, size: 18),
+            label: const Text(
+              'Mis Pedidos',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            onPressed: () => showOrderTrackingDialog(context),
           ),
+          const SizedBox(width: 4),
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white),
+            icon: const Icon(Icons.settings, color: Colors.white, size: 20),
             tooltip: 'Configuración',
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            constraints: const BoxConstraints(),
             onPressed: () => _showPinDialog(context),
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0, left: 4.0),
-            child: Center(
-              child: SizedBox(
-                key: cartIconKey,
-                width: 44,
-                height: 44,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(22),
-                  onTap: () => _openCartModal(context),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.center,
-                    children: [
-                      const Icon(
-                        Icons.shopping_bag,
-                        size: 28,
-                        color: Colors.white,
-                      ),
-                      Positioned(
-                        right: -2,
-                        top: 2,
-                        child: ValueListenableBuilder<List<CartItem>>(
-                          valueListenable: globalCartNotifier,
-                          builder: (context, cartItems, child) {
-                            final int totalCount = cartItems.fold(0, (sum, item) => sum + item.quantity);
-                            if (totalCount == 0) return const SizedBox.shrink();
+          const SizedBox(width: 4),
+          Center(
+            child: SizedBox(
+              key: cartIconKey,
+              width: 38,
+              height: 38,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(19),
+                onTap: () => _openCartModal(context),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.shopping_bag,
+                      size: 24,
+                      color: Colors.white,
+                    ),
+                    Positioned(
+                      right: -2,
+                      top: 2,
+                      child: ValueListenableBuilder<List<CartItem>>(
+                        valueListenable: globalCartNotifier,
+                        builder: (context, cartItems, child) {
+                          final int totalCount = cartItems.fold(0, (sum, item) => sum + item.quantity);
+                          if (totalCount == 0) return const SizedBox.shrink();
 
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF8B263E),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.2),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black26,
-                                    blurRadius: 4,
-                                    offset: Offset(0, 2),
-                                  )
-                                ],
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8B263E),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.white.withOpacity(0.9), width: 1),
+                            ),
+                            constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                            child: Text(
+                              '$totalCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
                               ),
-                              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                              child: Text(
-                                '$totalCount',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            );
-                          },
-                        ),
+                              textAlign: TextAlign.center,
+                            ),
+                          );
+                        },
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: screens[_currentIndex > 2 ? 0 : _currentIndex],
@@ -630,7 +723,7 @@ class CartBottomSheet extends StatelessWidget {
     );
   }
 
-  void _executeOrder(BuildContext context, List<CartItem> cartItems, double total) {
+  void _executeOrder(BuildContext context, List<CartItem> cartItems, total) {
     final user = globalActiveUserNotifier.value;
     if (user == null) return;
 
@@ -837,19 +930,20 @@ class _ShopCatalogTabState extends State<ShopCatalogTab> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   Timer? _timer;
+  bool _isPaused = false;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (_pageController.hasClients) {
+    _timer = Timer.periodic(const Duration(seconds: 6), (timer) {
+      if (_pageController.hasClients && !_isPaused) {
         int next = _currentPage + 1;
         if (next >= globalPromosListNotifier.value.length) {
           next = 0;
         }
         _pageController.animateToPage(
           next,
-          duration: const Duration(milliseconds: 500),
+          duration: const Duration(milliseconds: 600),
           curve: Curves.easeInOut,
         );
       }
@@ -887,72 +981,111 @@ class _ShopCatalogTabState extends State<ShopCatalogTab> {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4ECDC4),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 2,
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CustomBraceletsScreen()),
+                  );
+                },
+                icon: const Icon(Icons.palette_rounded, size: 24),
+                label: const Text(
+                  '✨ ¡Diseña tu Propia Manilla Personalizada! ✨',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+            ),
             ValueListenableBuilder<List<PromoSlide>>(
               valueListenable: globalPromosListNotifier,
               builder: (context, promos, child) {
-                return Column(
-                  children: [
-                    SizedBox(
-                      height: 140,
-                      child: PageView.builder(
-                        controller: _pageController,
-                        onPageChanged: (index) {
-                          setState(() {
-                            _currentPage = index;
-                          });
-                        },
-                        itemCount: promos.length,
-                        itemBuilder: (context, index) {
-                          final promo = promos[index];
-                          return Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [promo.color1, promo.color2],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [BoxShadow(color: Colors.pink.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 5))],
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(promo.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white)),
-                                      const SizedBox(height: 6),
-                                      Text(promo.subtitle, style: const TextStyle(fontSize: 12, color: Colors.white70)),
-                                    ],
-                                  ),
+                return MouseRegion(
+                  onEnter: (_) => setState(() => _isPaused = true),
+                  onExit: (_) => setState(() => _isPaused = false),
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        height: 140,
+                        child: PageView.builder(
+                          controller: _pageController,
+                          onPageChanged: (index) {
+                            setState(() {
+                              _currentPage = index;
+                            });
+                          },
+                          itemCount: promos.length,
+                          itemBuilder: (context, index) {
+                            final promo = promos[index];
+                            return Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [promo.color1, promo.color2],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
-                                Icon(promo.icon, size: 50, color: Colors.white),
-                              ],
-                            ),
-                          );
-                        },
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [BoxShadow(color: Colors.pink.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 5))],
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(promo.icon, size: 40, color: Colors.white),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(promo.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white)),
+                                        const SizedBox(height: 6),
+                                        Text(promo.subtitle, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.auto_awesome, size: 40, color: Colors.white),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        promos.length,
-                        (index) => Container(
-                          width: 8,
-                          height: 8,
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _currentPage == index ? const Color(0xFFD85A7F) : Colors.grey.shade300,
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          promos.length,
+                          (index) => InkWell(
+                            onTap: () {
+                              _pageController.animateToPage(
+                                index,
+                                duration: const Duration(milliseconds: 400),
+                                curve: Curves.easeInOut,
+                              );
+                            },
+                            child: Container(
+                              width: _currentPage == index ? 20 : 8,
+                              height: 8,
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                                color: _currentPage == index ? const Color(0xFFD85A7F) : Colors.grey.shade300,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               },
             ),
@@ -986,7 +1119,7 @@ class _ShopCatalogTabState extends State<ShopCatalogTab> {
     );
   }
 
-Widget _buildCategoryChip(String category) {
+  Widget _buildCategoryChip(String category) {
     bool isSelected = _selectedCategory == category;
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
@@ -1065,20 +1198,6 @@ class _ProductCardWidgetState extends State<ProductCardWidget> {
                         Text(product.desc, style: const TextStyle(fontSize: 14, color: Colors.grey), textAlign: TextAlign.center),
                         const SizedBox(height: 12),
                         Text(formatCOP(product.price), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFD85A7F))),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFD85A7F),
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          onPressed: () {
-                            Navigator.pop(context);
-                            addToCart(context, _cardKey, product);
-                          },
-                          icon: const Icon(Icons.shopping_bag, color: Colors.white),
-                          label: const Text('Agregar al Carrito', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
                       ],
                     ),
                   ),
@@ -1147,7 +1266,7 @@ class _ProductCardWidgetState extends State<ProductCardWidget> {
                     children: [
                       Text(widget.product.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                       Text(widget.product.desc, style: const TextStyle(fontSize: 10, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [

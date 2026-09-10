@@ -40,8 +40,8 @@ class _CommunityHubTabState extends State<CommunityHubTab> with SingleTickerProv
             unselectedLabelColor: Colors.grey,
             labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             tabs: const [
-              Tab(icon: Icon(Icons.mark_email_unread_outlined), text: 'Buzón de Deseos'),
               Tab(icon: Icon(Icons.auto_awesome), text: 'Asistente Virtual'),
+              Tab(icon: Icon(Icons.mark_email_unread_outlined), text: 'Buzón de Deseos'),
             ],
           ),
         ),
@@ -49,8 +49,8 @@ class _CommunityHubTabState extends State<CommunityHubTab> with SingleTickerProv
           child: TabBarView(
             controller: _tabController,
             children: const [
-              SuggestionsSubView(),
               LuzChatSubView(),
+              SuggestionsSubView(),
             ],
           ),
         ),

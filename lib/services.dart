@@ -79,18 +79,26 @@ class CurrencyInputFormatter extends TextInputFormatter {
 
 // --- Variables Globales y Notifiers ---
 
-ValueNotifier<List<Tournament>> globalTournamentsNotifier = ValueNotifier([
-  Tournament(
+ValueNotifier<List<TournamentItem>> globalTournamentsNotifier = ValueNotifier([
+  TournamentItem(
     id: '1',
-    title: '🌟 Gran Torneo de Concentración Mágica 🌟',
+    gameName: 'Concentración Mágica',
+    prize: '🌟 1 Manilla Sorpresa + Brillo Labial',
+    rules: 'Encuentra todas las parejas en el menor tiempo posible sin exceder los fallos permitidos.',
+    startDate: DateTime.now().subtract(const Duration(days: 1)),
+    endDate: DateTime.now().add(const Duration(days: 5)),
     scores: [
       ScoreEntry(playerName: 'Valentina', timeInSeconds: 24.532, date: '02/09/2026'),
       ScoreEntry(playerName: 'Lucía', timeInSeconds: 31.021, date: '02/09/2026'),
     ],
   ),
-  Tournament(
+  TournamentItem(
     id: '2',
-    title: '🎨 Reto del Diseñador Mágico (Velocidad) 🎨',
+    gameName: 'Reto de Velocidad',
+    prize: '👑 Descuento del 20% en tu próxima compra',
+    rules: 'Completa el desafío en tiempo récord demostrando tu agilidad mental.',
+    startDate: DateTime.now().subtract(const Duration(days: 1)),
+    endDate: DateTime.now().add(const Duration(days: 3)),
     scores: [
       ScoreEntry(playerName: 'Valentina', timeInSeconds: 12.104, date: '02/09/2026'),
       ScoreEntry(playerName: 'Camila', timeInSeconds: 15.892, date: '02/09/2026'),
@@ -138,6 +146,25 @@ ValueNotifier<List<SuggestionItem>> globalSuggestionsNotifier = ValueNotifier([
 ValueNotifier<String> globalLuzGreetingNotifier = ValueNotifier(
   'Hola. Soy Luz, asistente virtual de Manillas Mágicas. Estoy aquí para informarte sobre precios, disponibilidad de productos, métodos de compra y resolver tus dudas. ¿En qué te puedo ayudar hoy?',
 );
+
+// --- Notifier para la paleta de colores personalizada de manillas ---
+ValueNotifier<List<CustomPaletteColor>> globalCustomPaletteNotifier = ValueNotifier([
+  CustomPaletteColor(id: 'c1', name: 'Rosa Mágico', color: Colors.pinkAccent),
+  CustomPaletteColor(id: 'c2', name: 'Azul Cielo', color: Colors.lightBlueAccent),
+  CustomPaletteColor(id: 'c3', name: 'Amarillo Estrella', color: Colors.amber),
+  CustomPaletteColor(id: 'c4', name: 'Morado Unicornio', color: Colors.purpleAccent),
+  CustomPaletteColor(id: 'c5', name: 'Turquesa Océano', color: Colors.tealAccent),
+  CustomPaletteColor(id: 'c6', name: 'Verde Esmeralda', color: Colors.greenAccent),
+  CustomPaletteColor(id: 'c7', name: 'Negro', color: Colors.black),
+]);
+
+// --- Notifiers para los precios configurables de manillas personalizadas ---
+ValueNotifier<double> globalCustomPrice1Notifier = ValueNotifier(4000.0);
+ValueNotifier<double> globalCustomPrice2Notifier = ValueNotifier(5500.0);
+ValueNotifier<double> globalCustomPrice3Notifier = ValueNotifier(7000.0);
+
+// --- Notifier para el PIN de administrador (Por defecto '2024') ---
+ValueNotifier<String> globalAdminPinNotifier = ValueNotifier('2024');
 
 ValueNotifier<List<CartItem>> globalCartNotifier = ValueNotifier([]);
 ValueNotifier<List<OrderItem>> globalOrdersNotifier = ValueNotifier([]);
@@ -195,12 +222,10 @@ void initFirestoreSync() {
         globalProductsNotifier.value = cloudProducts;
       }
     });
-  } catch (_) {
-    // Captura segura genérica para evitar errores de tipo en JS
-  }
+  } catch (_) {}
 }
 
-// --- Diálogo Global de Identificación de Usuario ---
+// --- Diálogo Global de Identificación de Usuario (Con validación profesional de WhatsApp) ---
 
 void showLoginOrRegisterDialog(BuildContext context, VoidCallback onSuccess) {
   final TextEditingController nameController = TextEditingController();
@@ -223,8 +248,9 @@ void showLoginOrRegisterDialog(BuildContext context, VoidCallback onSuccess) {
           const SizedBox(height: 10),
           TextField(
             controller: wppController,
+            maxLength: 10,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: 'WhatsApp', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'WhatsApp', border: OutlineInputBorder(), counterText: ''),
           ),
         ],
       ),
@@ -239,6 +265,14 @@ void showLoginOrRegisterDialog(BuildContext context, VoidCallback onSuccess) {
             if (name.isEmpty || wpp.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Por favor completa ambos campos')),
+              );
+              return;
+            }
+
+            // Validación profesional: mensaje elegante si no cumple con 10 dígitos
+            if (wpp.length != 10 || int.tryParse(wpp) == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('⚠️ Número de WhatsApp errado o no corresponde a un contacto válido.')),
               );
               return;
             }

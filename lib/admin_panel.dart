@@ -28,10 +28,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setStateDialog) {
           return AlertDialog(
-            title: const Text('Gestión de Promociones', style: TextStyle(fontWeight: FontWeight.bold)),
+            title: const Text('Gestión de Promociones ✨', style: TextStyle(fontWeight: FontWeight.bold)),
             content: SizedBox(
-              width: 400,
-              height: 350,
+              width: 450,
+              height: 450,
               child: ValueListenableBuilder<List<PromoSlide>>(
                 valueListenable: globalPromosListNotifier,
                 builder: (context, promos, child) {
@@ -48,15 +48,31 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                 leading: Icon(promo.icon, color: const Color(0xFFD85A7F)),
                                 title: Text(promo.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                 subtitle: Text(promo.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.redAccent),
-                                  onPressed: () {
-                                    List<PromoSlide> updated = List.from(globalPromosListNotifier.value);
-                                    updated.removeAt(index);
-                                    globalPromosListNotifier.value = updated;
-                                    setStateDialog(() {});
-                                    setState(() {});
-                                  },
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, color: Colors.teal),
+                                      tooltip: 'Editar promoción',
+                                      onPressed: () {
+                                        _openPromoForm(context, promoToEdit: promo, editIndex: index, onSaved: () {
+                                          setStateDialog(() {});
+                                          setState(() {});
+                                        });
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                      tooltip: 'Eliminar promoción',
+                                      onPressed: () {
+                                        List<PromoSlide> updated = List.from(globalPromosListNotifier.value);
+                                        updated.removeAt(index);
+                                        globalPromosListNotifier.value = updated;
+                                        setStateDialog(() {});
+                                        setState(() {});
+                                      },
+                                    ),
+                                  ],
                                 ),
                               ),
                             );
@@ -67,7 +83,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
                         onPressed: () {
-                          _openAddPromoDialog(context, () {
+                          _openPromoForm(context, onSaved: () {
                             setStateDialog(() {});
                             setState(() {});
                           });
@@ -93,46 +109,145 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  void _openAddPromoDialog(BuildContext context, VoidCallback onAdded) {
-    final titleController = TextEditingController();
-    final subtitleController = TextEditingController();
+  void _openPromoForm(BuildContext context, {PromoSlide? promoToEdit, int? editIndex, required VoidCallback onSaved}) {
+    final titleController = TextEditingController(text: promoToEdit?.title ?? '');
+    final subtitleController = TextEditingController(text: promoToEdit?.subtitle ?? '');
+
+    final List<Map<String, dynamic>> availableIcons = [
+      {'name': 'Corona', 'icon': Icons.emoji_events},
+      {'name': 'Magia', 'icon': Icons.auto_awesome},
+      {'name': 'Estrella', 'icon': Icons.star},
+      {'name': 'Corazón', 'icon': Icons.favorite},
+      {'name': 'Regalo', 'icon': Icons.card_giftcard},
+      {'name': 'Diamante', 'icon': Icons.diamond},
+      {'name': 'Oferta', 'icon': Icons.local_offer},
+      {'name': 'Envío', 'icon': Icons.local_shipping},
+      {'name': 'Fiesta', 'icon': Icons.celebration},
+      {'name': 'Descuento', 'icon': Icons.discount},
+    ];
+
+    IconData selectedStartIcon = promoToEdit?.icon ?? Icons.emoji_events;
+    IconData selectedEndIcon = promoToEdit?.icon ?? Icons.auto_awesome;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Agregar Promoción'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Título de la Promo', border: OutlineInputBorder())),
-            const SizedBox(height: 10),
-            TextField(controller: subtitleController, decoration: const InputDecoration(labelText: 'Descripción corta', border: OutlineInputBorder())),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: Text(promoToEdit == null ? 'Nueva Promoción' : 'Editar Promoción', style: const TextStyle(fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: 480,
+            height: 720,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    textAlign: TextAlign.justify,
+                    decoration: const InputDecoration(labelText: 'Título de la Promo', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: subtitleController,
+                    textAlign: TextAlign.justify,
+                    decoration: const InputDecoration(labelText: 'Descripción corta', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Icono Inicial (Izquierda):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    height: 120,
+                    child: GridView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5, crossAxisSpacing: 8, mainAxisSpacing: 8),
+                      itemCount: availableIcons.length,
+                      itemBuilder: (context, index) {
+                        final item = availableIcons[index];
+                        IconData iconData = item['icon'];
+                        bool isSelected = selectedStartIcon == iconData;
+
+                        return InkWell(
+                          onTap: () => setStateDialog(() => selectedStartIcon = iconData),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFFD85A7F).withOpacity(0.2) : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: isSelected ? const Color(0xFFD85A7F) : Colors.transparent, width: 2),
+                            ),
+                            child: Icon(iconData, color: isSelected ? const Color(0xFFD85A7F) : Colors.black54, size: 24),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Icono Final (Derecha):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    height: 120,
+                    child: GridView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5, crossAxisSpacing: 8, mainAxisSpacing: 8),
+                      itemCount: availableIcons.length,
+                      itemBuilder: (context, index) {
+                        final item = availableIcons[index];
+                        IconData iconData = item['icon'];
+                        bool isSelected = selectedEndIcon == iconData;
+
+                        return InkWell(
+                          onTap: () => setStateDialog(() => selectedEndIcon = iconData),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFF4ECDC4).withOpacity(0.2) : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: isSelected ? const Color(0xFF4ECDC4) : Colors.transparent, width: 2),
+                            ),
+                            child: Icon(iconData, color: isSelected ? const Color(0xFF4ECDC4) : Colors.black54, size: 24),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
+              onPressed: () {
+                final title = formatTitleCase(titleController.text);
+                final subtitle = formatTitleCase(subtitleController.text);
+                if (title.isNotEmpty) {
+                  List<PromoSlide> updated = List.from(globalPromosListNotifier.value);
+                  if (promoToEdit == null) {
+                    updated.add(PromoSlide(
+                      title: title,
+                      subtitle: subtitle.isEmpty ? '¡Descuento especial!' : subtitle,
+                      color1: const Color(0xFFD85A7F),
+                      color2: const Color(0xFF4ECDC4),
+                      icon: selectedEndIcon,
+                    ));
+                  } else if (editIndex != null) {
+                    updated[editIndex] = PromoSlide(
+                      title: title,
+                      subtitle: subtitle.isEmpty ? '¡Descuento especial!' : subtitle,
+                      color1: promoToEdit.color1,
+                      color2: promoToEdit.color2,
+                      icon: selectedEndIcon,
+                    );
+                  }
+                  globalPromosListNotifier.value = updated;
+                  onSaved();
+                }
+                Navigator.pop(context);
+              },
+              child: const Text('Guardar', style: TextStyle(color: Colors.white)),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
-            onPressed: () {
-              final title = formatTitleCase(titleController.text);
-              final subtitle = formatTitleCase(subtitleController.text);
-              if (title.isNotEmpty) {
-                List<PromoSlide> updated = List.from(globalPromosListNotifier.value);
-                updated.add(PromoSlide(
-                  title: title,
-                  subtitle: subtitle.isEmpty ? '¡Descuento especial!' : subtitle,
-                  color1: const Color(0xFFD85A7F),
-                  color2: const Color(0xFF4ECDC4),
-                  icon: Icons.local_activity,
-                ));
-                globalPromosListNotifier.value = updated;
-                onAdded();
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Guardar', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }
@@ -216,6 +331,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         title: const Text('Renombrar Categoría'),
         content: TextField(
           controller: nameController,
+          textAlign: TextAlign.justify,
           decoration: const InputDecoration(labelText: 'Nuevo nombre', border: OutlineInputBorder()),
         ),
         actions: [
@@ -248,7 +364,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirmar Eliminación'),
-        content: Text('¿Desea eliminar la categoría "$categoryToDelete"? Los productos asociados pasarán a la categoría "Accesorios".'),
+        content: Text(
+          '¿Desea eliminar la categoría "$categoryToDelete"? Los productos asociados pasarán a la categoría "Accesorios".',
+          textAlign: TextAlign.justify,
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           ElevatedButton(
@@ -265,6 +384,385 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               Navigator.pop(context);
             },
             child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- GESTIÓN DE LA PALETA DE COLORES PERSONALIZADOS Y PRECIOS ---
+  void _openPaletteManager(BuildContext context) {
+    final price1Controller = TextEditingController(text: NumberFormat('#,##0', 'es_CO').format(globalCustomPrice1Notifier.value));
+    final price2Controller = TextEditingController(text: NumberFormat('#,##0', 'es_CO').format(globalCustomPrice2Notifier.value));
+    final price3Controller = TextEditingController(text: NumberFormat('#,##0', 'es_CO').format(globalCustomPrice3Notifier.value));
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text('Gestión de Paleta y Precios 🎨', style: TextStyle(fontWeight: FontWeight.bold)),
+            content: SizedBox(
+              width: 460,
+              height: 520,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFD85A7F),
+                        side: const BorderSide(color: Color(0xFFD85A7F), width: 2),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => _openChangePinDialog(context),
+                      icon: const Icon(Icons.lock_reset, size: 22),
+                      label: const Text('Cambiar PIN de Admin 🔒', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.pink.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.pink.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Precios de Manillas Personalizadas 💰', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF2D1B33))),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: price1Controller,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [CurrencyInputFormatter()],
+                            decoration: const InputDecoration(labelText: 'Precio 1 Color', border: OutlineInputBorder(), isDense: true),
+                            onChanged: (val) {
+                              String raw = val.replaceAll(RegExp(r'[^0-9]'), '');
+                              globalCustomPrice1Notifier.value = double.tryParse(raw) ?? globalCustomPrice1Notifier.value;
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: price2Controller,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [CurrencyInputFormatter()],
+                            decoration: const InputDecoration(labelText: 'Precio 2 Colores', border: OutlineInputBorder(), isDense: true),
+                            onChanged: (val) {
+                              String raw = val.replaceAll(RegExp(r'[^0-9]'), '');
+                              globalCustomPrice2Notifier.value = double.tryParse(raw) ?? globalCustomPrice2Notifier.value;
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: price3Controller,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [CurrencyInputFormatter()],
+                            decoration: const InputDecoration(labelText: 'Precio 3 Colores', border: OutlineInputBorder(), isDense: true),
+                            onChanged: (val) {
+                              String raw = val.replaceAll(RegExp(r'[^0-9]'), '');
+                              globalCustomPrice3Notifier.value = double.tryParse(raw) ?? globalCustomPrice3Notifier.value;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Colores Disponibles en la Paleta:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    ValueListenableBuilder<List<CustomPaletteColor>>(
+                      valueListenable: globalCustomPaletteNotifier,
+                      builder: (context, paletteColors, child) {
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: paletteColors.length,
+                          itemBuilder: (context, index) {
+                            final item = paletteColors[index];
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 6),
+                              child: ListTile(
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: item.color,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.black26),
+                                  ),
+                                ),
+                                title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, color: Colors.teal, size: 20),
+                                      onPressed: () {
+                                        _openColorForm(context, colorToEdit: item, editIndex: index, onSaved: () {
+                                          setStateDialog(() {});
+                                          setState(() {});
+                                        });
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                                      onPressed: () {
+                                        List<CustomPaletteColor> updated = List.from(globalCustomPaletteNotifier.value);
+                                        updated.removeAt(index);
+                                        globalCustomPaletteNotifier.value = updated;
+                                        setStateDialog(() {});
+                                        setState(() {});
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
+                      onPressed: () {
+                        _openColorForm(context, onSaved: () {
+                          setStateDialog(() {});
+                          setState(() {});
+                        });
+                      },
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      label: const Text('Agregar Nuevo Color', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4ECDC4)),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _openColorForm(BuildContext context, {CustomPaletteColor? colorToEdit, int? editIndex, required VoidCallback onSaved}) {
+    final nameController = TextEditingController(text: colorToEdit?.name ?? '');
+    Color selectedColor = colorToEdit?.color ?? Colors.pinkAccent;
+
+    final List<Color> colorSpectrum = [
+      Colors.black, Colors.white, Colors.grey, Colors.brown,
+      Colors.red, Colors.redAccent, Colors.deepOrange, Colors.orange,
+      Colors.amber, Colors.yellow, Colors.lime, Colors.lightGreen,
+      Colors.green, Colors.teal, Colors.cyan, Colors.lightBlue,
+      Colors.blue, Colors.indigo, Colors.purple, Colors.purpleAccent,
+      Colors.pink, Colors.pinkAccent, const Color(0xFFFFD700), const Color(0xFFE6E6FA),
+      Colors.blueGrey, Colors.deepPurple, Colors.cyanAccent, Colors.greenAccent,
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: Text(colorToEdit == null ? 'Nuevo Color' : 'Editar Color', style: const TextStyle(fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: 440,
+            height: 480,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: 'Nombre del Tono (ej. Rosado Brillante)', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('1. Elige un color de la escala mágica:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: SizedBox(
+                      height: 200,
+                      child: GridView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 6,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                        ),
+                        itemCount: colorSpectrum.length,
+                        itemBuilder: (context, index) {
+                          final colorVal = colorSpectrum[index];
+                          bool isSelected = selectedColor.value == colorVal.value;
+
+                          return InkWell(
+                            onTap: () {
+                              setStateDialog(() {
+                                selectedColor = colorVal;
+                              });
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: colorVal,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: isSelected ? const Color(0xFFD85A7F) : Colors.black26, width: isSelected ? 3 : 1),
+                                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 3, offset: Offset(0, 1))],
+                              ),
+                              child: isSelected ? Icon(Icons.check, color: colorVal == Colors.white ? Colors.black : Colors.white, size: 18) : null,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Text('Tono seleccionado: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: selectedColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.black26),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
+              onPressed: () {
+                final name = formatTitleCase(nameController.text);
+                if (name.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor escribe un nombre para el color')));
+                  return;
+                }
+
+                List<CustomPaletteColor> updated = List.from(globalCustomPaletteNotifier.value);
+                if (colorToEdit == null) {
+                  updated.add(CustomPaletteColor(
+                    id: 'c_${DateTime.now().millisecondsSinceEpoch}',
+                    name: name,
+                    color: selectedColor,
+                  ));
+                } else if (editIndex != null) {
+                  updated[editIndex] = CustomPaletteColor(
+                    id: colorToEdit.id,
+                    name: name,
+                    color: selectedColor,
+                  );
+                }
+                globalCustomPaletteNotifier.value = updated;
+                onSaved();
+                Navigator.pop(context);
+              },
+              child: const Text('Guardar', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openChangePinDialog(BuildContext context) {
+    final currentPinController = TextEditingController();
+    final newPinController = TextEditingController();
+    final confirmPinController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cambiar PIN de Admin 🔒', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: SizedBox(
+          width: 350,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Ingresa tu PIN actual y el nuevo PIN de 4 números:', style: TextStyle(fontSize: 13)),
+              const SizedBox(height: 14),
+              TextField(
+                controller: currentPinController,
+                obscureText: true,
+                maxLength: 4,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'PIN Actual', border: OutlineInputBorder(), counterText: ''),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: newPinController,
+                obscureText: true,
+                maxLength: 4,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Nuevo PIN (4 dígitos)', border: OutlineInputBorder(), counterText: ''),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: confirmPinController,
+                obscureText: true,
+                maxLength: 4,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Confirmar Nuevo PIN', border: OutlineInputBorder(), counterText: ''),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
+            onPressed: () {
+              final currentInput = currentPinController.text.trim();
+              final newInput = newPinController.text.trim();
+              final confirmInput = confirmPinController.text.trim();
+
+              if (currentInput != globalAdminPinNotifier.value) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('❌ Error: El PIN actual es incorrecto')),
+                );
+                return;
+              }
+
+              if (newInput.length != 4 || int.tryParse(newInput) == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('❌ Error: El nuevo PIN debe tener exactamente 4 números')),
+                );
+                return;
+              }
+
+              if (newInput != confirmInput) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('❌ Error: Los nuevos PINs no coinciden')),
+                );
+                return;
+              }
+
+              globalAdminPinNotifier.value = newInput;
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('✨ ¡PIN de administrador cambiado con éxito! ✨')),
+              );
+            },
+            child: const Text('Actualizar PIN', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -304,18 +802,27 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nombre del producto', border: OutlineInputBorder())),
+                TextField(
+                  controller: nameController,
+                  textAlign: TextAlign.justify,
+                  decoration: const InputDecoration(labelText: 'Nombre del producto', border: OutlineInputBorder()),
+                ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: priceController,
+                  textAlign: TextAlign.justify,
                   keyboardType: TextInputType.number,
                   inputFormatters: [CurrencyInputFormatter()],
                   decoration: const InputDecoration(labelText: 'Precio (\$ 3.500)', border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 10),
-                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Descripción corta', border: OutlineInputBorder())),
+                TextField(
+                  controller: descController,
+                  textAlign: TextAlign.justify,
+                  decoration: const InputDecoration(labelText: 'Descripción corta', border: OutlineInputBorder()),
+                ),
                 const SizedBox(height: 10),
                 const Text('Categoría:', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 5),
@@ -329,7 +836,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 ),
                 if (selectedDropdownCategory == '+ Otra (Escribir nueva)...') ...[
                   const SizedBox(height: 10),
-                  TextField(controller: customCategoryController, decoration: const InputDecoration(labelText: 'Nombre de la nueva categoría', border: OutlineInputBorder())),
+                  TextField(
+                    controller: customCategoryController,
+                    textAlign: TextAlign.justify,
+                    decoration: const InputDecoration(labelText: 'Nombre de la nueva categoría', border: OutlineInputBorder()),
+                  ),
                 ],
                 const SizedBox(height: 12),
                 Row(
@@ -361,7 +872,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               ],
             ),
           ),
-          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           actions: [
             Row(
               children: [
@@ -420,13 +931,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         'imageBase64': base64Img ?? '',
                       };
 
-                      // Generar un ID estable y único garantizando que Firestore guarde el documento permanentemente con una clave clara
                       String docId = productToEdit?.id ?? '';
-                      if (docId.isEmpty || docId.length < 5 || docId.startsWith('1') || docId.startsWith('2') || docId.startsWith('3') || docId.startsWith('4') || docId.startsWith('5') || docId.startsWith('6') || docId.startsWith('7') || docId.startsWith('8') || docId.startsWith('9') || docId.startsWith('10')) {
+                      if (docId.isEmpty || docId.length < 5) {
                         docId = 'prod_${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}_${DateTime.now().millisecondsSinceEpoch}';
                       }
 
-                      // 1. Actualización local instantánea (Optimistic UI)
                       List<ProductItem> updatedList = List.from(globalProductsNotifier.value);
                       if (productToEdit == null) {
                         updatedList.add(ProductItem(
@@ -452,7 +961,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       }
                       globalProductsNotifier.value = updatedList;
 
-                      // 2. Persistencia en la nube de Firestore (Compatible con Web sin arrojar TypeError de FirebaseException)
                       try {
                         if (productToEdit == null) {
                           await FirebaseFirestore.instance.collection('products').doc(docId).set(productData);
@@ -489,7 +997,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Eliminar Producto'),
-        content: Text('¿Desea eliminar el producto "${item.name}"?'),
+        content: Text(
+          '¿Desea eliminar el producto "${item.name}"?',
+          textAlign: TextAlign.justify,
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           ElevatedButton(
@@ -509,6 +1020,191 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
           ),
         ],
+      ),
+    );
+  }
+
+  // --- GESTIÓN DE TORNEOS EXCLUSIVA DE VALENTINA ---
+  void _openTournamentManager(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text('Gestión de Torneos 🏆', style: TextStyle(fontWeight: FontWeight.bold)),
+            content: SizedBox(
+              width: 450,
+              height: 400,
+              child: ValueListenableBuilder<List<TournamentItem>>(
+                valueListenable: globalTournamentsNotifier,
+                builder: (context, tournaments, child) {
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: tournaments.isEmpty
+                            ? const Center(child: Text('No hay torneos programados.'))
+                            : ListView.builder(
+                                itemCount: tournaments.length,
+                                itemBuilder: (context, index) {
+                                  final t = tournaments[index];
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    child: ListTile(
+                                      title: Text(t.gameName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                      subtitle: Text('Premio: ${t.prize}\nFin: ${DateFormat('dd/MM/yyyy HH:mm').format(t.endDate)}', style: const TextStyle(fontSize: 11)),
+                                      trailing: IconButton(
+                                        icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                        onPressed: () {
+                                          List<TournamentItem> updated = List.from(globalTournamentsNotifier.value);
+                                          updated.removeAt(index);
+                                          globalTournamentsNotifier.value = updated;
+                                          setStateDialog(() {});
+                                          setState(() {});
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                      const SizedBox(height: 10),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
+                        onPressed: () {
+                          _openAddTournamentDialog(context, () {
+                            setStateDialog(() {});
+                            setState(() {});
+                          });
+                        },
+                        icon: const Icon(Icons.add, color: Colors.white),
+                        label: const Text('Programar Nuevo Torneo', style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4ECDC4)),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _openAddTournamentDialog(BuildContext context, VoidCallback onAdded) {
+    // Se ha retirado "Sopa de Letras Mágica" y solo quedan los juegos permitidos
+    String selectedGame = 'Concentración Mágica';
+    final prizeController = TextEditingController();
+    final rulesController = TextEditingController();
+    
+    DateTime startDate = DateTime.now();
+    DateTime endDate = DateTime.now().add(const Duration(days: 1));
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: const Text('Programar Torneo 👑'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Elige el Juego:', style: TextStyle(fontWeight: FontWeight.bold)),
+                DropdownButtonFormField<String>(
+                  value: selectedGame,
+                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  items: ['Concentración Mágica', 'Reto de Velocidad']
+                      .map((game) => DropdownMenuItem(value: game, child: Text(game)))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) setStateDialog(() => selectedGame = val);
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: prizeController,
+                  textAlign: TextAlign.justify,
+                  decoration: const InputDecoration(labelText: 'Premio de la Administración', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: rulesController,
+                  textAlign: TextAlign.justify,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Reglas del Torneo', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 10),
+                ListTile(
+                  title: Text('Inicio: ${DateFormat('dd/MM/yyyy HH:mm').format(startDate)}'),
+                  trailing: const Icon(Icons.calendar_today, size: 18),
+                  onTap: () async {
+                    DateTime? pickedDate = await showDatePicker(context: context, initialDate: startDate, firstDate: DateTime(2026), lastDate: DateTime(2030));
+                    if (pickedDate != null) {
+                      TimeOfDay? pickedTime = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(startDate));
+                      if (pickedTime != null) {
+                        setStateDialog(() {
+                          startDate = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+                        });
+                      }
+                    }
+                  },
+                ),
+                ListTile(
+                  title: Text('Cierre: ${DateFormat('dd/MM/yyyy HH:mm').format(endDate)}'),
+                  trailing: const Icon(Icons.calendar_today, size: 18),
+                  onTap: () async {
+                    DateTime? pickedDate = await showDatePicker(context: context, initialDate: endDate, firstDate: DateTime(2026), lastDate: DateTime(2030));
+                    if (pickedDate != null) {
+                      TimeOfDay? pickedTime = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(endDate));
+                      if (pickedTime != null) {
+                        setStateDialog(() {
+                          endDate = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+                        });
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
+              onPressed: () {
+                final prize = formatTitleCase(prizeController.text);
+                final rules = rulesController.text.trim();
+
+                if (prize.isEmpty || rules.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor completa el premio y las reglas')));
+                  return;
+                }
+
+                List<TournamentItem> updated = List.from(globalTournamentsNotifier.value);
+                updated.add(TournamentItem(
+                  id: 't_${DateTime.now().millisecondsSinceEpoch}',
+                  gameName: selectedGame,
+                  prize: prize,
+                  rules: rules,
+                  startDate: startDate,
+                  endDate: endDate,
+                  scores: [],
+                ));
+                globalTournamentsNotifier.value = updated;
+                onAdded();
+                Navigator.pop(context);
+              },
+              child: const Text('Guardar Torneo', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -559,6 +1255,20 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD85A7F),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => _openTournamentManager(context),
+              icon: const Icon(Icons.emoji_events, color: Colors.white),
+              label: const Text('Gestionar Torneos de Juegos 🏆', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFFD85A7F),
@@ -569,6 +1279,21 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               onPressed: () => _openCategoryManager(context),
               icon: const Icon(Icons.category),
               label: const Text('Gestionar Categorías', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF4ECDC4),
+                side: const BorderSide(color: Color(0xFF4ECDC4)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => _openPaletteManager(context),
+              icon: const Icon(Icons.palette),
+              label: const Text('Gestionar Paleta y Precios 🎨', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(height: 20),
@@ -965,7 +1690,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       final entry = sortedProducts[index];
                       final prodName = entry.key;
                       final qty = entry.value;
-                      final revenue = productSalesRevenue[prodName] ?? 0;
+                      final revenue = (productSalesRevenue[prodName] ?? 0.0) > 0 ? productSalesRevenue[prodName]! : 0.0;
                       final prodObj = productCatalogMap[prodName];
 
                       return Card(
@@ -994,9 +1719,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Editar Saludo de Luz', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Exactitud y Saludo de Luz', style: TextStyle(fontWeight: FontWeight.bold)),
         content: TextField(
           controller: controller,
+          textAlign: TextAlign.justify,
           maxLines: 4,
           decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Escribe el mensaje de bienvenida de Luz...'),
         ),
@@ -1004,12 +1730,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                globalLuzGreetingNotifier.value = controller.text.trim();
-              }
-              Navigator.pop(context);
-            },
+            onPressed: () => Navigator.pop(context),
             child: const Text('Guardar', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -1039,7 +1760,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 ),
                 TextButton.icon(
                   onPressed: () => setState(() => _adminTab = 1),
-                  icon: Icon(Icons.local_shipping, color: _adminTab == 1 ? const Color(0xFFD85A7F) : Colors.grey),
+                  icon: Icon(Icons.local_shipping, color: _adminTab == 1 ? const Color(0xFFD85A7F) : Colors.grey), // ignore: avoid_returning_null_for_void
                   label: Text('Seguimiento', style: TextStyle(color: _adminTab == 1 ? const Color(0xFFD85A7F) : Colors.grey, fontWeight: FontWeight.bold)),
                 ),
                 TextButton.icon(
@@ -1065,7 +1786,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               ),
             ),
           ),
-          const Divider(height: 1),
+      const Divider(height: 1),
           Expanded(
             child: _adminTab == 0
                 ? _buildCreationsView()
