@@ -9,6 +9,37 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:js' as js;
 
 import 'models.dart';
+import 'services/shop_settings.dart';
+
+final shopSettings = ShopSettings();
+
+Future<void> loadShopSettings() async {
+  await shopSettings.load();
+  final palette = shopSettings.palette;
+  if (palette != null) globalCustomPaletteNotifier.value = palette;
+  final prices = shopSettings.prices;
+  if (prices != null) {
+    globalCustomPrice1Notifier.value = prices[0];
+    globalCustomPrice2Notifier.value = prices[1];
+    globalCustomPrice3Notifier.value = prices[2];
+  }
+}
+
+bool verifyAdminPin(String pin) => shopSettings.verifyPin(pin);
+
+Future<void> saveAdminPin(String pin) => shopSettings.savePin(pin);
+
+Future<void> saveCustomPalette(List<CustomPaletteColor> palette) async {
+  await shopSettings.savePalette(palette);
+  globalCustomPaletteNotifier.value = palette;
+}
+
+Future<void> saveCustomPrices(List<double> prices) async {
+  await shopSettings.savePrices(prices);
+  globalCustomPrice1Notifier.value = prices[0];
+  globalCustomPrice2Notifier.value = prices[1];
+  globalCustomPrice3Notifier.value = prices[2];
+}
 
 // --- Utilidades de Formato y Multimedia ---
 
@@ -163,8 +194,6 @@ ValueNotifier<double> globalCustomPrice1Notifier = ValueNotifier(4000.0);
 ValueNotifier<double> globalCustomPrice2Notifier = ValueNotifier(5500.0);
 ValueNotifier<double> globalCustomPrice3Notifier = ValueNotifier(7000.0);
 
-// --- Notifier para el PIN de administrador (Por defecto '2024') ---
-ValueNotifier<String> globalAdminPinNotifier = ValueNotifier('2024');
 
 ValueNotifier<List<CartItem>> globalCartNotifier = ValueNotifier([]);
 ValueNotifier<List<OrderItem>> globalOrdersNotifier = ValueNotifier([]);

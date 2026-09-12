@@ -1,7 +1,6 @@
 ﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:device_preview/device_preview.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:intl/intl.dart';
@@ -22,12 +21,8 @@ void main() async {
     );
   } catch (_) {}
   
-  runApp(
-    DevicePreview(
-      enabled: true,
-      builder: (context) => const ManillasMagicasApp(),
-    ),
-  );
+  await loadShopSettings();
+  runApp(const ManillasMagicasApp());
 }
 
 class ManillasMagicasApp extends StatelessWidget {
@@ -38,9 +33,7 @@ class ManillasMagicasApp extends StatelessWidget {
     return MaterialApp(
       title: 'Manillas Mágicas - Valentina',
       debugShowCheckedModeBanner: false,
-      useInheritedMediaQuery: true,
-      locale: DevicePreview.locale(context),
-      builder: DevicePreview.appBuilder,
+      locale: const Locale('es', 'CO'),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -395,10 +388,10 @@ class _MainShopScreenState extends State<MainShopScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
             onPressed: () {
               Navigator.of(dialogContext).pop();
-              if (pinController.text == '2024') {
+              if (verifyAdminPin(pinController.text)) {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminPanelScreen()));
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN incorrecto (Prueba 2024)')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN incorrecto. Inténtalo de nuevo.')));
               }
             },
             child: const Text('Ingresar', style: TextStyle(color: Colors.white)),

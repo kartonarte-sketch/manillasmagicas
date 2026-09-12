@@ -438,10 +438,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             keyboardType: TextInputType.number,
                             inputFormatters: [CurrencyInputFormatter()],
                             decoration: const InputDecoration(labelText: 'Precio 1 Color', border: OutlineInputBorder(), isDense: true),
-                            onChanged: (val) {
-                              String raw = val.replaceAll(RegExp(r'[^0-9]'), '');
-                              globalCustomPrice1Notifier.value = double.tryParse(raw) ?? globalCustomPrice1Notifier.value;
-                            },
                           ),
                           const SizedBox(height: 8),
                           TextField(
@@ -449,10 +445,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             keyboardType: TextInputType.number,
                             inputFormatters: [CurrencyInputFormatter()],
                             decoration: const InputDecoration(labelText: 'Precio 2 Colores', border: OutlineInputBorder(), isDense: true),
-                            onChanged: (val) {
-                              String raw = val.replaceAll(RegExp(r'[^0-9]'), '');
-                              globalCustomPrice2Notifier.value = double.tryParse(raw) ?? globalCustomPrice2Notifier.value;
-                            },
                           ),
                           const SizedBox(height: 8),
                           TextField(
@@ -460,10 +452,27 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             keyboardType: TextInputType.number,
                             inputFormatters: [CurrencyInputFormatter()],
                             decoration: const InputDecoration(labelText: 'Precio 3 Colores', border: OutlineInputBorder(), isDense: true),
-                            onChanged: (val) {
-                              String raw = val.replaceAll(RegExp(r'[^0-9]'), '');
-                              globalCustomPrice3Notifier.value = double.tryParse(raw) ?? globalCustomPrice3Notifier.value;
+                          ),
+                          const SizedBox(height: 10),
+                          ElevatedButton(
+                            onPressed: () async {
+                              final prices = [price1Controller, price2Controller, price3Controller]
+                                  .map((controller) => double.tryParse(controller.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0)
+                                  .toList();
+                              if (prices.any((price) => price <= 0)) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Escribe tres precios mayores que cero.')));
+                                return;
+                              }
+                              try {
+                                await saveCustomPrices(prices);
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Precios guardados.')));
+                              } catch (_) {
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudieron guardar los precios.')));
+                              }
                             },
+                            child: const Text('Guardar precios'),
                           ),
                         ],
                       ),
@@ -507,12 +516,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                     ),
                                     IconButton(
                                       icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                                      onPressed: () {
-                                        List<CustomPaletteColor> updated = List.from(globalCustomPaletteNotifier.value);
-                                        updated.removeAt(index);
-                                        globalCustomPaletteNotifier.value = updated;
-                                        setStateDialog(() {});
-                                        setState(() {});
+                                      onPressed: () async {
+                                        final updated = List<CustomPaletteColor>.from(globalCustomPaletteNotifier.value);
+                                        updated.removeWhere((color) => color.id == item.id);
+                                        try {
+                                          await saveCustomPalette(updated);
+                                          if (!context.mounted) return;
+                                          setStateDialog(() {});
+                                        } catch (_) {
+                                          if (!context.mounted) return;
+                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo eliminar el color. Inténtalo de nuevo.')));
+                                        }
                                       },
                                     ),
                                   ],
@@ -651,7 +665,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
-              onPressed: () {
+              onPressed: () async {
                 final name = formatTitleCase(nameController.text);
                 if (name.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor escribe un nombre para el color')));
@@ -672,9 +686,15 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     color: selectedColor,
                   );
                 }
-                globalCustomPaletteNotifier.value = updated;
-                onSaved();
-                Navigator.pop(context);
+                try {
+                  await saveCustomPalette(updated);
+                  if (!context.mounted) return;
+                  onSaved();
+                  Navigator.pop(context);
+                } catch (_) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo guardar el color. Inténtalo de nuevo.')));
+                }
               },
               child: const Text('Guardar', style: TextStyle(color: Colors.white)),
             ),
@@ -730,19 +750,19 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD85A7F)),
-            onPressed: () {
+            onPressed: () async {
               final currentInput = currentPinController.text.trim();
               final newInput = newPinController.text.trim();
               final confirmInput = confirmPinController.text.trim();
 
-              if (currentInput != globalAdminPinNotifier.value) {
+              if (!verifyAdminPin(currentInput)) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('❌ Error: El PIN actual es incorrecto')),
                 );
                 return;
               }
 
-              if (newInput.length != 4 || int.tryParse(newInput) == null) {
+              if (!RegExp(r'^\d{4}$').hasMatch(newInput)) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('❌ Error: El nuevo PIN debe tener exactamente 4 números')),
                 );
@@ -756,7 +776,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 return;
               }
 
-              globalAdminPinNotifier.value = newInput;
+              try {
+                await saveAdminPin(newInput);
+              } catch (_) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo guardar el PIN. Inténtalo de nuevo.')));
+                return;
+              }
+              if (!context.mounted) return;
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('✨ ¡PIN de administrador cambiado con éxito! ✨')),
