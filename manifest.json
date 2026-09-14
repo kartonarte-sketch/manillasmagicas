@@ -1,11 +1,11 @@
 {
-    "name": "manillasmagicas",
-    "short_name": "manillasmagicas",
+    "name": "Manillas Mágicas",
+    "short_name": "Manillas Mágicas",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFF5F7",
+    "theme_color": "#D85A7F",
+    "description": "Accesorios artesanales y diseños personalizados de Valentina.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
